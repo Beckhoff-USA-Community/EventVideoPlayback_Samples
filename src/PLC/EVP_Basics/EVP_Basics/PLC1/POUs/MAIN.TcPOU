@@ -1,0 +1,93 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="MAIN" Id="{0075d80b-61a4-490d-9376-cb3be29646eb}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+	// TwinCAT Vision Basics
+	Camera				: FB_VN_SimpleCameraControl;
+	CamState			: ETcVNCameraState;
+	hr					: HRESULT;
+	ImageIn				: ITcVNImage;
+	ImageWork			: ITcVNImage;
+	ImageWorkForDisp	: ITcVNImage;
+	// TwinCAT Vision Application Vars
+	bNewImageIn				: BOOL;
+	nImage_ID_Num			: ULINT;
+	nImageCount				: UINT  := 0;
+	dcImageInTime			: ULINT;
+	dcImageInTimePrevious 	: ULINT;
+	ImagePerSec				: REAL;
+	// Event Video Playback
+	EVP 			: FB_ImageToVideo := (TimeBeforeEvent	:= T#7S, TimeAfterEvent	:= T#3S);
+	TriggerEvent 	: BOOL;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[(**************************************************
+***************************************************
+** Basic Tc Vision Code
+***************************************************
+**************************************************)
+
+// Camera State Control.  Camera state must be ACQUIRING to allow images to be received from the camera.
+CamState := Camera.GetState(); // CamState must be constantly monitored when not processing an image.
+
+CASE CamState OF
+	-1: // ERROR state
+		hr := Camera.Reset();
+	0, 1, 2, 3, 5: // INITIAL, INITIALIZING, INITIALIZED, OPENING, STARTACQUISITION states
+		hr := Camera.StartAcquisition();
+	4: 	// OPENED.  Comment out following line if separately commanding STARTACQUISITION and STOPACQUISITION state.
+		hr := Camera.StartAcquisition();
+	6:	// ACQUIRING state - Camera ready to deliver images
+		
+	7:	// STOPACQUISITION state
+		hr := Camera.StopAcquisition();
+	9:	// TRIGGERING state
+		hr := Camera.TriggerImage();
+END_CASE
+
+hr	:= Camera.GetCurrentImage(ImageIn); // Get image from Input Image Queue
+IF SUCCEEDED(hr) AND ImageIn <> 0 THEN	// Image was obtained from the Input Image Queue
+	// All image processing will be within or called from within this IF
+	bNewImageIn	  := TRUE;
+	nImageCount	  := nImageCount + 1;
+	nImage_ID_Num := nImageCount; // Value to use for Image Number
+
+	// Calculate Image/sec
+	dcImageInTimePrevious := dcImageInTime;
+	dcImageInTime		  := F_GetActualDcTime64();
+	ImagePerSec			  := 1E9 / ULINT_TO_REAL(dcImageInTime - dcImageInTimePrevious);
+	
+	
+	hr := F_VN_CopyImage(ImageIn, ImageWork, hr);
+	hr := F_VN_CopyImage(ImageWork, ImageWorkForDisp, hr);
+	
+	// *****Put all image processing code HERE*****
+	EVP.AddImage(ImageWork);
+	// ** ^^^^^^^ EVP Code for adding to buffer **
+	
+	// Return code from Processing
+	hr := S_OK;	
+END_IF
+
+(**************************************************
+***************************************************
+** EVP Code
+***************************************************
+**************************************************)
+
+//Playback
+EVP.CyclicLogic();
+
+// Listen for a trigger event
+IF TriggerEvent AND NOT EVP.Busy THEN
+	TriggerEvent := FALSE;
+	EVP.TriggerAlarmForVideoCapture(LogEntryName := 'MyEvent');
+ELSIF TriggerEvent AND EVP._Busy THEN
+	//Handle error at application
+END_IF
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

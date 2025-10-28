@@ -1,22 +1,28 @@
-# About This Repository
+# Event Video Playback
 
--- UPDATE THIS SECTION -- 
-This Repository is a template meant for basing new public repos off of. A new GitHub repo can be based off this template to automatically import the same TwinCAT GitIgnore and README file templates. After importing, replace this text to match the desired repo descriptions. 
+This repository includes both the source files and the release package for the TwinCAT Event Video Playback package. The package provides an easy to use PLC interface for assembling images captured with TwinCAT Vision into a single video file. When the video file is created, a corresponding alarm event is logged into the TwinCAT Event Logger for later viewing. In addition, an HMI Control component is supplied for easy viewing and playback of logged video events on TwinCAT HMI.
 
-This sample is created by [Beckhoff Automation LLC.](https://www.beckhoff.com/en-us/), and is provided as-is under the Zero-Clause BSD license.
+## Getting Started
 
-# How to get support
+Instead of cloning the source repository for this project, start with the installer zip files located in the [Releases section](https://github.com/Beckhoff-USA-Community/TC_EventVideoPlayback/releases) of this repository. Download the latest copy of the TcEventVideoPlayback.exe from the Releases section. The release package will include a sample PLC project, sample HMI project, PLC library, and the required Windows service installer.
+
+![Releases](Documentation/docs/Images/Releases.PNG)
+
+
+
+
+## Documentation
+
+Find the latest up-to-date [documentation here](https://Beckhoff-USA-Community.github.io/TC_EventVideoPlayback/) on GitHub pages, or you can find them after install under the install path ```/Documentation```.
+
+
+
+
+
+### How to get support
 
 Should you have any questions regarding the provided sample code, please contact your local Beckhoff support team. Contact information can be found on the official Beckhoff website at https://www.beckhoff.com/en-us/support/.
 
-# Further Information
+### Disclaimer
 
--- UPDATE THIS SECTION -- 
-Further Information on -- THIS REPO TOPIC -- can be found at the [Beckhoff Infosys](https://infosys.beckhof.com) under the [REPO TOPIC](https://infosys.beckhoff.com/content/1033/ethercatsystem/2469077771.html?id=8287668039751154112)
-
-## Requirements
-
-The following components must be installed to run sample code:
-
-- [TE1000 TwinCAT 3 Engineering](https://www.beckhoff.com/en-en/products/automation/twincat/te1xxx-twincat-3-engineering/te1000.html) version 3.1.4024.0 or higher
-- -- UPDATE THIS SECTION --
+All sample code provided by Beckhoff Automation LLC are for illustrative purposes only and are provided “as is” and without any warranties, express or implied. Actual implementations in applications will vary significantly. Beckhoff Automation LLC shall have no liability for, and does not waive any rights in relation to, any code samples that it provides or the use of such code samples for any purpose.
