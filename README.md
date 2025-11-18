@@ -1,4 +1,4 @@
-# Event Video Playback
+# Event Video Playback Samples
 
 This repository includes sample TwinCAT PLC and HMI solutions for Event Video Playback.
 
