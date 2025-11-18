@@ -1,0 +1,62 @@
+Target PC NIC Configuration for use with a GigE Vision camera:
+	Configure Camera NIC on target PC to a unique IP with subnet mask 255.255.255.0
+		Preferrably, disable all protocols except for:
+			Internet Protocol Version 4
+			TwinCAT Ethernet Protocol
+
+TwinCAT Configuration for use with a GigE Vision camera:
+	Select camera NIC.
+		In Solution Explorer under I/O, Devices, double click on Device 1.
+		Select "Adapter" tab.
+		Search and select the Camera NIC configured above.
+	Select camera.
+		In Solution Explorer under VISION, Application 1, double right click on Camera 1.
+		Select "Choose Target Camera...", select "Discover Devices" to browse for available cameras.
+		Select camera, change IP if required.
+	Set Persistent IP on camaera.
+		In Configuration Assistant, Camera Features,
+			Expand "GigE Vision"
+			Enable Persistent IP
+			Set Persistant IP (must be in subnet of PC camera NIC)
+			Set Subnet Mask (255.255.255.0) to match PC camera NIC 
+		
+TwinCAT configuration for target PC processor:
+	In Solution Explorer under SYSTEM, Double-click "Real-Time"
+	Select "Read from Target"
+
+PLC selection of image source is configured by:
+	In the Solution Explorer under PLC, PLC_Vision, double click on PLC_Vision Instance.
+	Select the Symbol Initialization tab.
+	Select the image source to use under "Value".
+
+
+
+The Simple Camera Control allows images to be obtained from either a Camera or a FileSource.
+
+The GEVCamera Control allows images to be obtained only from a camera control, and in addition use the folowing functions: 
+	GetCurrentImageWithGvspInfo
+	GetOmittedImagesNum which indicates one or more images have been discarded due to an image 
+		arriving from the camera while the previous image is still 
+		in the ImageQueue (Image Queue set to 1 which is the default).
+
+Typical GigE camera configuration:
+	Acquisition Mode set "Continuous"
+	Image Format - Pixel Format - "Mono 8" or "Bayer RG" for color image
+
+	For Camera Software Trigger images:
+		Trigger Selector - Acquisition - Trigger Mode set "Off"
+		Trigger Selector - Frame Start - Trigger Mode set "On"
+		Trigger Selector - Frame Start - Trigger Source set "Software"
+
+	For Camera Input Line 1 Trigger images:
+		Trigger Selector - Acquisition - Trigger Mode set "Off"
+		Trigger Selector - Frame Start - Trigger Mode set "On"
+		Trigger Selector - Frame Start - Trigger Source set "Line 1"
+
+	For Camera freerun images:
+		Trigger Selector - Acquisition - Trigger Mode set "Off"
+		Trigger Selector - Frame Start - Trigger Mode set "Off"
+		or (depending on camera mfg.)
+		Trigger Selector - Acquisition - Trigger Mode set "Off"
+		Trigger Selector - Frame Start - Trigger Mode set "On"
+		Trigger Selector - Frame Start - Trigger Source set "Freerun"
