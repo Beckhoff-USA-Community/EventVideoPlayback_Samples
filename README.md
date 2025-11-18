@@ -6,7 +6,7 @@ This repository includes sample TwinCAT PLC and HMI solutions for Event Video Pl
 
 ## Getting Started
 
-The main EventVideoPlayback GitHub repository is located at [main](https://github.com/Beckhoff-USA-Community/EventVideoPlayback)
+EventVideoPlayback GitHub repository is located at [EventVideoPlayback](https://github.com/Beckhoff-USA-Community/EventVideoPlayback)
 
 
 
