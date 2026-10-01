@@ -1,0 +1,203 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.13">
+  <POU Name="Vision1" Id="{e06b686d-ec1f-4118-b8b0-c34bc3d6609a}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM Vision1
+VAR PERSISTENT
+END_VAR
+VAR
+	
+//************************************************************************
+// ImageToVideo Instance
+    EVP1 : FB_ImageToVideo := (CameraName := 'Camera1',
+                                   FramesPerSecond := 10,
+                                   TimeBeforeEvent := T#2.5S,
+                                   TimeAfterEvent := T#3S,
+                                   VideoOutputDirectory := 'C:\EventVideos',
+                                   ReductionFactor := 0.25);
+//************************************************************************
+
+//  Test image creation - Frequecy at which a new test image will be created
+	FramesPerSecond: UINT := 10; // Set to match FramesPerSecond setting in ImageToVideo Instance above
+	
+//  Program vars
+	fb_Camera: FB_VN_SimpleCameraControl;
+	CamState: ETcVNCameraState;
+	bNewImageIn: BOOL;
+	bFirstScan: BOOL := TRUE;
+
+   // Event Trigger Boolean
+    TriggerEvent1: BOOL;
+    TriggerEvent2: BOOL;
+	CountEventTrigger1: UINT;
+	CountEventTrigger2: UINT;
+
+// Colors
+	aColorWhite: TcVnVector4_LREAL := [255, 255, 255, 255];
+	aColorBlack: TcVnVector4_LREAL := [0, 0, 0, 255];
+	aColorGreen: TcVnVector4_LREAL := [0, 175, 0, 255];
+	aColorBlue: TcVnVector4_LREAL := [0, 0, 255, 255];
+	aColorRed: TcVnVector4_LREAL := [255, 0, 0, 255];
+	aColorMagenta: TcVnVector4_LREAL := [255, 0, 255, 255];
+	
+	hr: HRESULT;
+	hr_CameraState: HRESULT;
+	hr_OmittedImage: HRESULT;
+	nImagesOmitted: ULINT;	
+
+	ImageIn: ITcVNImage;
+	ImageInDisp: ITcVnDisplayableImage;
+	ImageAtEventDisp: ITcVnDisplayableImage;
+	
+// Other
+	nImage_ID_Num: ULINT := 0;
+	dcImageInTime: ULINT;
+	dcImageInTimePrevious: ULINT;
+	ImagePerSec: REAL;
+
+// For test image creation (time display)
+    fbGetLocalSystemTime: FB_LocalSystemTime;
+    stLocalSystemTime: TIMESTRUCT;
+    stDCTime: TIMESTRUCT;
+	UseCreatedTestImage: BOOL;
+	stDcTodValue: TOD;
+    sDcTime24hr: STRING;
+    sDcTimeMinSec: STRING;
+	sTimeLocal: STRING;
+	ImageBlack: ITcVnImage;
+	TimeCurrent: ULINT;
+	TimeLastImageCreation: ULINT;
+	Hour12: WORD;
+	sHour12: STRING;
+	ImageCreationTimeIncrement: ULINT;
+	bNewTimeImageCreated: BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// This example builds an image displaying the current PC clock for Event Video Playback demonstration purposes.
+
+// See "_TwinCAT Vision - System and Camera Configuration Help.txt" in PLC_Vision project for common camera onfiguration help
+
+// When adding a camera to this project, image source to the PLC is selected at
+// PLC_Vision Instance > Symbol Initialization
+
+// A PLC VISU is included in this example
+
+// Initialization section
+IF bFirstScan = TRUE THEN
+	bFirstScan := FALSE;
+	// Startup Params
+	
+//************************************************************************
+	EVP1.Reset();
+//************************************************************************
+
+	// The next three lines are for Demo Image Creation
+	UseCreatedTestImage := true;
+	hr := F_VN_CreateImageAndSetPixels(ImageBlack, 1600, 1200, TCVN_ET_USINT, 1, aColorBlack, S_OK);
+	ImageCreationTimeIncrement := (TO_ULINT(1E7/FramesPerSecond)) - 1;
+END_IF
+
+
+// Camera State Control. This universal Camera State Control maintains the camera in Acquiring state (required to receive images).
+CamState := fb_Camera.GetState();  // CamState must be constantly monitored when not processing an image.
+CASE CamState OF
+-1: // ERROR state
+	hr := fb_Camera.Reset();
+0,1,2,3,5: // INITIAL, INITIALIZING, INITIALIZED, OPENING, STARTACQUISITION states
+	hr := fb_Camera.StartAcquisition();
+4: // OPENED.  Comment out following line if separatly calling STARTACQUISITION and STOPACQUISITION state.
+	hr := fb_Camera.StartAcquisition();
+6: // ACQUIRING state - Camera ready to deliver images
+7: // STOPACQUISITION state
+	hr := fb_Camera.StopAcquisition(); // Required to complete the transition back to OPENED state.
+9: // TRIGGERING state
+	hr := fb_Camera.TriggerImage();
+	// After a Software Trigger, Camera enters Triggering Mode and acquires and sends an image
+	// The Software Trigger must be called again to complete the transition back to Acquiring mode
+	// This also applies to the File Source Control when in Trigger mode
+END_CASE
+hr := S_OK;
+
+
+// For demo use. Demo "System Time" Image Creation
+	// If UseCreatedTestImage is enabled;
+	// Then build an image which displays the current PC time at the rate specified by "FramesPerSecond". 
+	// Else, use GetCurrentImage function (from Camera or FileSource).
+	IF UseCreatedTestImage THEN
+		TimeCurrent := F_GetSystemTime();
+		bNewTimeImageCreated := FALSE;
+		IF (TimeCurrent - TimeLastImageCreation) > ImageCreationTimeIncrement THEN // Create a new image based on FramesPerSecond var setting
+			bNewTimeImageCreated := TRUE;
+			TimeLastImageCreation := TimeCurrent;
+			// Get the local system time in a Time Structure and change to string
+				fbGetLocalSystemTime(bEnable := TRUE, SystemTime => stLocalSystemTime);// System time is used for accurate local "hours"
+				stDCTime := DCtime64_to_systemtime(F_GetActualDcTime64());// DC time is used for most accurate "minutes:seconds" (to match log entry time)
+				stDcTodValue := SYSTEMTIME_TO_TOD(stDCTime);
+				sDcTime24hr := TO_STRING(stDcTodValue);	
+				sDcTimeMinSec := MID(sDcTime24hr,9,7);
+				IF stLocalSystemTime.wHour > 12 THEN
+					Hour12 := stLocalSystemTime.wHour - 12;
+				ELSE
+					Hour12 := stLocalSystemTime.wHour;
+				END_IF
+			sHour12 := TO_STRING(Hour12);
+			sTimeLocal := concat(sHour12,sDcTimeMinSec);
+			hr := F_VN_CopyImage(ImageBlack, ImageIn, S_OK);
+			hr := F_VN_PutTextExp(sTimeLocal, ImageIn, 200, 500, TCVN_FT_HERSHEY_SIMPLEX, 6, aColorWhite, 10, TCVN_LT_8_CONNECTED, FALSE, hr);
+		ELSE
+			hr := -1; // Set hr to FAILED if a new image was not created this run
+		END_IF
+	ELSE
+		hr := fb_Camera.GetCurrentImage(ImageIn);  // Get image from Input Image Queue
+	END_IF
+// End: Demo "System Time" Image Creation
+
+
+//hr := fb_Camera.GetCurrentImage(ImageIn);  // Get image from Input Image Queue
+bNewImageIn := FALSE;
+IF (SUCCEEDED(hr) AND ImageIn <> 0) THEN  // Image was obtained from the Input Image Queue
+	bNewImageIn := TRUE;
+	nImage_ID_Num := nImage_ID_Num +1;
+//	If using FB_VN_GevCameraControl, OmittedImageNum can be used to monitor for discarded images
+//	hr_OmittedImage := fb_Camera.GetOmittedImagesNum(nImagesOmitted); // Images discarded from the ImageQueue due to images arriving faster than they can be processed
+
+	// Calculate Image/sec to verify rate of incoming images
+	dcImageInTimePrevious := dcImageInTime;
+	dcImageInTime := F_GetActualDcTime64();
+	ImagePerSec := 1E9/ULINT_TO_REAL(dcImageInTime - dcImageInTimePrevious);
+	
+	// ImageInDisp is a displayable copy of ImageIn
+	hr := F_VN_CopyIntoDisplayableImage(ImageIn, ImageInDisp, hr);
+
+	// *****If needed, process image HERE within this "bNewImageIn" IF *****
+
+//************************************************************************
+	EVP1.AddImage(ipImageIn := ImageIn);
+//************************************************************************
+
+END_IF
+
+//************************************************************************
+	EVP1.CyclicLogic();
+//************************************************************************
+
+// Trigger Event Video Playback Event(s)
+// The following are example of differently named "Events" for the same camera.
+IF TriggerEvent1 THEN
+	CountEventTrigger1 := CountEventTrigger1 + 1;
+    TriggerEvent1 := FALSE;
+	hr := F_VN_CopyIntoDisplayableImage(ImageIn, ImageAtEventDisp, S_OK);
+//************************************************************************
+    EVP1.TriggerAlarmForVideoCapture(LogEntryName := 'Safety Curtain');
+//************************************************************************
+ELSIF TriggerEvent2 THEN
+	CountEventTrigger2 := CountEventTrigger2 + 1;
+    TriggerEvent2 := FALSE;
+	hr := F_VN_CopyIntoDisplayableImage(ImageIn, ImageAtEventDisp, S_OK);
+//************************************************************************
+    EVP1.TriggerAlarmForVideoCapture(LogEntryName := 'Jam');
+//************************************************************************
+END_IF
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>
